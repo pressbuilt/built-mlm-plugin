@@ -1,1 +1,1 @@
-# Built MLM WordPress Plugin
+# Built MLM Plugin
