@@ -34,7 +34,7 @@ if ( ! defined( 'WPINC' ) ) {
  * The code that runs during plugin activation.
  * This action is documented in includes/class-built-mlm-activator.php
  */
-function activate_plugin_name() {
+function activate_built_mlm() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-built-mlm-activator.php';
 	Built_Mlm_Activator::activate();
 }
@@ -43,13 +43,13 @@ function activate_plugin_name() {
  * The code that runs during plugin deactivation.
  * This action is documented in includes/class-built-mlm-deactivator.php
  */
-function deactivate_plugin_name() {
+function deactivate_built_mlm() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-built-mlm-deactivator.php';
 	Built_Mlm_Deactivator::deactivate();
 }
 
-register_activation_hook( __FILE__, 'activate_plugin_name' );
-register_deactivation_hook( __FILE__, 'deactivate_plugin_name' );
+register_activation_hook( __FILE__, 'activate_built_mlm' );
+register_deactivation_hook( __FILE__, 'deactivate_built_mlm' );
 
 /**
  * The core plugin class that is used to define internationalization,
@@ -66,10 +66,10 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-built-mlm.php';
  *
  * @since    1.0.0
  */
-function run_plugin_name() {
+function run_built_mlm() {
 
 	$plugin = new Built_Mlm();
 	$plugin->run();
 
 }
-run_plugin_name();
+run_built_mlm();
