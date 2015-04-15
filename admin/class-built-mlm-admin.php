@@ -100,4 +100,60 @@ class Built_Mlm_Admin {
 
 	}
 
+	/**
+	 * Create admin area menus and sub-menus
+	 *
+	 * @since    1.0.0
+	 */
+	public function admin_menus() {
+
+		// Top level menu
+		add_menu_page( 'Built MLM Settings', 'Built MLM', 'manage_options', 'built-mlm' );
+
+		// Sub-menus
+		add_submenu_page( 'built-mlm', 'Settings', 'Settings', 'manage_options', 'built-mlm', array( $this, 'main_settings' ) );
+		add_submenu_page( 'built-mlm', 'Manage Commission Rates', 'Commission Rates', 'manage_options', 'built-mlm-commission-rates', array( $this, 'manage_commission_rates' ) );
+
+	}
+
+	/**
+	 * Main settings page
+	 *
+	 * @since    1.0.0
+	 */
+	public function main_settings() {
+
+		$output = '';
+
+		$output .=
+			'<div class="wrap">' .
+				'<h2>' .
+					__( 'Settings', $this->plugin_name ) .
+				'</h2>' .
+			'</div>';
+
+		echo $output;
+
+	}
+
+	/**
+	 * Manage commission ratese for all vendors
+	 *
+	 * @since    1.0.0
+	 */
+	public function manage_commission_rates() {
+
+		$output = '';
+
+		$output .=
+			'<div class="wrap">' .
+				'<h2>' .
+					__( 'Manage Commission Rates', $this->plugin_name ) .
+				'</h2>' .
+			'</div>';
+
+		echo $output;
+
+	}
+
 }
