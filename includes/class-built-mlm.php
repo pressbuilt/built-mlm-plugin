@@ -158,6 +158,9 @@ class Built_Mlm {
 		// Administration menus
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'admin_menus' );
 
+		// Plugin settings
+		$this->loader->add_action( 'admin_init', $plugin_admin, 'register_plugin_settings' );
+
 	}
 
 	/**

@@ -122,18 +122,20 @@ class Built_Mlm_Admin {
 	 * @since    1.0.0
 	 */
 	public function main_settings() {
+		?>
+		<div class="wrap">
+			<h2>
+				<?php echo __( 'Settings', $this->plugin_name ); ?>
+			</h2>
 
-		$output = '';
+			<form method="post" action="options.php">
+				<?php settings_fields( 'built-mlm' ); ?>
+				<?php do_settings_sections( 'built-mlm' ); ?>
+				<?php submit_button(); ?>
+			</form>
 
-		$output .=
-			'<div class="wrap">' .
-				'<h2>' .
-					__( 'Settings', $this->plugin_name ) .
-				'</h2>' .
-			'</div>';
-
-		echo $output;
-
+		</div>
+		<?php
 	}
 
 	/**
@@ -154,6 +156,74 @@ class Built_Mlm_Admin {
 
 		echo $output;
 
+	}
+
+	/**
+	 * Create plugin settings sections, fields and callbacks
+	 *
+	 * @since    1.0.0
+	 */
+	function register_plugin_settings() {
+		// General settings section
+		add_settings_section(
+			'built_mlm_settings_general',
+			__( 'General', $this->plugin_name ),
+			array( $this, 'settings_section_general' ),
+			'built-mlm'
+		);
+		
+		// General settings fields
+		add_settings_field(
+			'built_mlm_root_group',
+			__( 'Root Vendor Group', $this->plugin_name ),
+			array( $this, 'settings_field_root_vendor_group' ),
+			'built-mlm',
+			'built_mlm_settings_general',
+			array( 'label_for' => 'built_mlm_root_group' )
+		);
+		
+		// Register settings so that $_POST is handled
+		register_setting( 'built-mlm', 'built_mlm_settings' );
+	}
+
+	/**
+	 * Output general section intro text
+	 *
+	 * @since    1.0.0
+	 */
+	function settings_section_general() {
+ 		echo '<p>' . __( 'Settings that control the behavior of the plugin.', $this->plugin_name ) . '</p>';
+	}
+
+	/**
+	 * Output Root Vendor Group setting field
+	 *
+	 * @since    1.0.0
+	 */
+	function settings_field_root_vendor_group( $args ) {
+
+		if ( !class_exists( 'Groups_Group' ) ) {
+			return;
+		}
+
+		$options = get_option( 'built_mlm_settings' );
+
+		$selected = '';
+		if ( isset( $options['built_mlm_root_group'] ) ) {
+			$selected = $options['built_mlm_root_group'];
+		}
+
+		// Fetch all groups that have been created in the groups plugin
+		$groups = Groups_Group::get_groups();
+
+ 		?>
+ 		<select name="built_mlm_settings[built_mlm_root_group]" id="built_mlm_root_group">
+ 			<option value=""></option>
+ 			<?php foreach ( $groups as $group ) { ?>
+ 				<option value="<?php echo $group->group_id; ?>" <?php echo ( $group->group_id == $selected ? 'selected="selected"' : '' ); ?>><?php echo $group->name; ?></option>
+ 			<?php } ?>
+		</select>
+		<?php
 	}
 
 }
