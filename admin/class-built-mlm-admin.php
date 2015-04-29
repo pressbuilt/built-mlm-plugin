@@ -61,18 +61,6 @@ class Built_Mlm_Admin {
 	 */
 	public function enqueue_styles() {
 
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Built_Mlm_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Built_Mlm_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
-
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/built-mlm-admin.css', array(), $this->version, 'all' );
 
 	}
@@ -83,18 +71,6 @@ class Built_Mlm_Admin {
 	 * @since    1.0.0
 	 */
 	public function enqueue_scripts() {
-
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Built_Mlm_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Built_Mlm_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/built-mlm-admin.js', array( 'jquery' ), $this->version, false );
 
@@ -113,48 +89,6 @@ class Built_Mlm_Admin {
 		// Sub-menus
 		add_submenu_page( 'built-mlm', 'Settings', 'Settings', 'manage_options', 'built-mlm', array( $this, 'main_settings' ) );
 		add_submenu_page( 'built-mlm', 'Manage Commission Rates', 'Commission Rates', 'manage_options', 'built-mlm-commission-rates', array( $this, 'manage_commission_rates' ) );
-
-	}
-
-	/**
-	 * Main settings page
-	 *
-	 * @since    1.0.0
-	 */
-	public function main_settings() {
-		?>
-		<div class="wrap">
-			<h2>
-				<?php echo __( 'Settings', $this->plugin_name ); ?>
-			</h2>
-
-			<form method="post" action="options.php">
-				<?php settings_fields( 'built-mlm' ); ?>
-				<?php do_settings_sections( 'built-mlm' ); ?>
-				<?php submit_button(); ?>
-			</form>
-
-		</div>
-		<?php
-	}
-
-	/**
-	 * Manage commission ratese for all vendors
-	 *
-	 * @since    1.0.0
-	 */
-	public function manage_commission_rates() {
-
-		$output = '';
-
-		$output .=
-			'<div class="wrap">' .
-				'<h2>' .
-					__( 'Manage Commission Rates', $this->plugin_name ) .
-				'</h2>' .
-			'</div>';
-
-		echo $output;
 
 	}
 
@@ -183,7 +117,7 @@ class Built_Mlm_Admin {
 		);
 		
 		// Register settings so that $_POST is handled
-		register_setting( 'built-mlm', 'built_mlm_settings' );
+		register_setting( 'built-mlm', 'built_mlm_settings', array( $this, 'sanitize_setting_values' ) );
 	}
 
 	/**
@@ -218,12 +152,154 @@ class Built_Mlm_Admin {
 
  		?>
  		<select name="built_mlm_settings[built_mlm_root_group]" id="built_mlm_root_group">
- 			<option value=""></option>
+ 			<option value="0">Select a group</option>
  			<?php foreach ( $groups as $group ) { ?>
  				<option value="<?php echo $group->group_id; ?>" <?php echo ( $group->group_id == $selected ? 'selected="selected"' : '' ); ?>><?php echo $group->name; ?></option>
  			<?php } ?>
 		</select>
 		<?php
+	}
+
+	/**
+	 * Sanitize settings values
+	 *
+	 * @since    1.0.0
+	 */
+	public function sanitize_setting_values( $data ) {
+
+		foreach ( $data as $option_name => $option_value ) {
+			switch ( $option_name ) {
+				case 'built_mlm_root_group':
+					if ( !ctype_digit( $option_value ) ) {
+						$data[$option_name] = 0;
+						add_settings_error(
+							$option_name,
+							esc_attr( 'built_mlm_root_group' ),
+							__( 'Invalid option selected for Root Vendor Group setting', $this->plugin_name ),
+							'error'
+						);
+					}
+
+					// Fetch all groups that have been created in the groups plugin
+					$group_ids = Groups_Group::get_group_ids();
+					if ( !in_array( $option_value, $group_ids ) ) {
+						$data[$option_name] = 0;
+						add_settings_error(
+							$option_name,
+							esc_attr( 'built_mlm_root_group' ),
+							__( 'Invalid option selected for Root Vendor Group setting', $this->plugin_name ),
+							'error'
+						);
+					}
+					break;
+			}
+		}
+
+		return $data;
+
+	}
+
+	/**
+	 * Main settings page
+	 *
+	 * @since    1.0.0
+	 */
+	public function main_settings() {
+		?>
+		<div class="wrap">
+			<h2>
+				<?php echo __( 'Settings', $this->plugin_name ); ?>
+			</h2>
+
+			<?php settings_errors(); ?>
+
+			<form method="post" action="options.php">
+				<?php settings_fields( 'built-mlm' ); ?>
+				<?php do_settings_sections( 'built-mlm' ); ?>
+				<?php submit_button(); ?>
+			</form>
+
+		</div>
+		<?php
+	}
+
+	/**
+	 * Manage commission ratese for all vendors
+	 *
+	 * @since    1.0.0
+	 */
+	public function manage_commission_rates() {
+
+		if ( !class_exists( 'Groups_Group' ) ) {
+			return;
+		}
+
+		$options = get_option( 'built_mlm_settings' );
+
+		if ( empty( $options['built_mlm_root_group'] ) ) {
+			?>
+			<p><?php echo __( 'Please select a root vendor group in the main settings.', $this->plugin_name ); ?></p>
+			<?php
+		}
+
+
+		?>
+		<div class="wrap">
+			<h2>
+				<?php echo __( 'Manage Commission Rates', $this->plugin_name ); ?>
+			</h2>
+		</div>
+		<?php
+
+
+		$group_tree = Groups_Utility::get_group_tree();
+		if ( !isset( $group_tree[$options['built_mlm_root_group']] ) ) {
+			die('no group');
+		}
+		$group_tree = $group_tree[$options['built_mlm_root_group']];
+
+		$output = '';
+		$this->build_commission_tree_output($group_tree, $output);
+
+		?>
+
+		<form method="post" action="options.php">
+			<?php echo $output; ?>
+		</form>
+
+		<?php
+	}
+
+
+	/**
+	 * Recursively build a string that contains a hierarchical view
+	 * of the entire commission tree and its users
+	 *
+	 * @since    1.0.0
+	 */
+	public function build_commission_tree_output( &$tree, &$output ) {
+		$output .= '<ol>';
+		foreach( $tree as $group_id => $nodes ) {
+			$output .= '<li>';
+			$group = new Groups_Group( $group_id );
+			if ( $group ) {
+				$group_users = $group->users;
+				$output .= '<ul>';
+				foreach ( $group_users as $group_user ) {
+					$output .= '<li>';
+					$output .= $group_user->display_name . ' (' . $group_user->user_email . ')<br>';
+					$output .= '<label for="commission_rate_' . $group_user->ID . '">Commission Rate:</label> <input id="commission_rate_' . $group_user->ID . '" name="commission_rate_' . $group_user->ID . '" type="number" min="0" max="100" />%';
+					$output .= '</li>';
+				}
+				$output .= '</ul>';
+
+			}
+			if ( !empty( $nodes ) ) {
+				$this->build_commission_tree_output( $nodes, $output );
+			}
+			$output .= '</li>';
+		}
+		$output .= '</ol>';
 	}
 
 }

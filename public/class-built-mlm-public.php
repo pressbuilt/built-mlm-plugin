@@ -52,6 +52,15 @@ class Built_Mlm_Public {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
+		add_action( 'woocommerce_product_query', array( $this, 'vendor_shop_query' ), 11, 2 );
+	}
+
+	public static function vendor_shop_query( $q, $this ) {
+		$vendor_id   = WCV_Vendors::get_vendor_id( 'root_vendor' );
+
+		if ( !$vendor_id ) return;
+
+		//$q->set( 'author', $vendor_id );
 	}
 
 	/**
