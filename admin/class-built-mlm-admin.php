@@ -41,6 +41,14 @@ class Built_Mlm_Admin {
 	private $version;
 
 	/**
+	 * Valid user roles for Vendors
+	 * @since    1.0.0
+	 * @access   private
+	 * @var      array     $vendor_roles     Valid user roles for Vendors
+	 */
+	private $vendor_roles = array( 'vendor', 'pending_vendor' );
+
+	/**
 	 * Initialize the class and set its properties.
 	 *
 	 * @since    1.0.0
@@ -224,11 +232,83 @@ class Built_Mlm_Admin {
 	}
 
 	/**
+	 * Update commission rate user meta values for all vendors
+	 *
+	 * @since    1.0.0
+	 */
+	public function updateVendorCommissionRates( $rates ) {
+		foreach ( $rates as $user_id => $rate ) {
+			update_user_meta( $user_id, 'built_mlm_commission_rate', $rate );
+		}
+	}
+
+	/**
+	 * Update commission rate user meta values for all vendors
+	 *
+	 * @since    1.0.0
+	 */
+	public function createNewVendor( $user_id, $parent_vendor_group_id = null ) {
+		echo '<pre>' . print_r($user_id, 1) . '</pre>';	
+		echo '<pre>' . print_r($parent_vendor_group_id, 1) . '</pre>';
+
+		$user = get_userdata( $user_id );
+
+		if ( empty( $user->ID ) ) {
+			return false;
+		}
+
+
+		// Check to see if a group exists for this vendor already
+		$group = Groups_Group::read_by_name( $user->user_login );
+
+		if ( !empty( $group ) ) {
+			$group_id = $group->group_id;
+
+			// Update group with proper parent
+			Groups_Group::update( array(
+				'group_id' => $group->group_id,
+				'parent_id' => $parent_vendor_group_id
+			) );
+
+		} else {
+
+			// Create a new group for this vendor
+			$group_id = Groups_Group::create( array(
+				'name' => $user->user_login,
+				'creator_id' => $user_id,
+				'parent_id' => $parent_vendor_group_id
+			) );
+
+		}
+
+		// Make sure user is assigned to this group
+		Groups_User_Group::create( array(
+			'group_id' => $group_id,
+			'user_id' => $user_id
+		) );
+
+		$user_id = wp_update_user( array( 'ID' => $user_id, 'role' => 'vendor' ) );
+		if ( is_wp_error( $user_id ) ) {
+			return false;
+		}	
+
+		return $group_id;
+	}
+
+	/**
 	 * Manage commission ratese for all vendors
 	 *
 	 * @since    1.0.0
 	 */
 	public function manage_commission_rates() {
+
+		if ( !empty( $_POST['commission_rate'] ) ) {
+			$this->updateVendorCommissionRates( $_POST['commission_rate'] );
+		}
+
+		if ( !empty( $_POST['vendor_user_id'] ) ) {
+			$this->createNewVendor( $_POST['vendor_user_id'] , $_POST['parent_vendor_group_id'] );
+		}
 
 		if ( !class_exists( 'Groups_Group' ) ) {
 			return;
@@ -241,7 +321,6 @@ class Built_Mlm_Admin {
 			<p><?php echo __( 'Please select a root vendor group in the main settings.', $this->plugin_name ); ?></p>
 			<?php
 		}
-
 
 		?>
 		<div class="wrap">
@@ -259,14 +338,74 @@ class Built_Mlm_Admin {
 		$group_tree = $group_tree[$options['built_mlm_root_group']];
 
 		$output = '';
-		$this->build_commission_tree_output($group_tree, $output);
+		$indent = 15;
+		$this->build_commission_tree_output($group_tree, $output, $indent);
 
 		?>
 
-		<form method="post" action="options.php">
-			<?php echo $output; ?>
+		<form id="commission-rates" method="post">
+			<table class="wp-list-table widefat fixed striped">
+				<thead>
+					<tr>
+						<th><?php echo __('Vendor', $this->plugin_name); ?></th>
+						<th><?php echo __('Commission Rate', $this->plugin_name); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php echo $output; ?>
+				</tbody>
+			</table>
+			<p class="submit">
+				<input type="submit" name="save-commission-rates-button" id="save-commission-rates-button" class="button button-primary" value="Save Comission Rates">
+			</p>
 		</form>
 
+		<h3>Add New Vendor</h3>
+		<form id="add-vendor" method="post">
+			<table class="form-table">
+				<tbody>
+					<tr class="form-field form-required">
+						<th scope="row">
+							<label for="user">User</label>
+						</th>
+						<td>
+							<select name="vendor_user_id" id="vendor-user-id">
+							<?php
+								$non_vendor_users = get_users( 'orderby=display_name' );
+								foreach ( $non_vendor_users as $user ) {
+
+									// We only want to list users who aren't already vendors
+									$vendor_roles = array_intersect( $user->roles, $this->vendor_roles );
+									if ( !empty( $vendor_roles ) ) continue;
+
+									echo '<option value="' . $user->ID . '">' . esc_html( $user->display_name ) . '</option>';
+								}
+							?>
+							</select>
+							<p class="description">Choose an existing user to add as a vendor</p>
+						</td>
+					</tr>
+					<tr class="form-field form-required">
+						<th scope="row">
+							<label for="user">Parent Vendor</label>
+						</th>
+						<td>
+							<select name="parent_vendor_group_id" id="parent-vendor-group-id">
+							<?php
+								$group_select_output = '';
+								$this->build_hierarchical_vendor_group_select($group_tree, $group_select_output, $indent = '');
+								echo $group_select_output;
+							?>
+							</select>
+							<p class="description">Choose an parent vendor</p>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="submit">
+				<input type="submit" name="add-vendor-button" id="add-vendor-button" class="button button-primary" value="Add New Vendor">
+			</p>
+		</form>
 		<?php
 	}
 
@@ -277,29 +416,75 @@ class Built_Mlm_Admin {
 	 *
 	 * @since    1.0.0
 	 */
-	public function build_commission_tree_output( &$tree, &$output ) {
-		$output .= '<ol>';
+	public function build_commission_tree_output( &$tree, &$output, $indent ) {
 		foreach( $tree as $group_id => $nodes ) {
-			$output .= '<li>';
 			$group = new Groups_Group( $group_id );
 			if ( $group ) {
+
 				$group_users = $group->users;
-				$output .= '<ul>';
-				foreach ( $group_users as $group_user ) {
-					$output .= '<li>';
-					$output .= $group_user->display_name . ' (' . $group_user->user_email . ')<br>';
-					$output .= '<label for="commission_rate_' . $group_user->ID . '">Commission Rate:</label> <input id="commission_rate_' . $group_user->ID . '" name="commission_rate_' . $group_user->ID . '" type="number" min="0" max="100" />%';
-					$output .= '</li>';
+
+				if ( !empty( $group_users ) ) {
+
+					foreach ( $group_users as $group_user ) {
+
+						$valid_roles = array_intersect( $group_user->roles, $this->vendor_roles );
+						
+						if ( empty( $valid_roles ) ) continue;
+
+						$commission_rate = get_user_meta( $group_user->ID, 'built_mlm_commission_rate', 1 );
+
+						$commission_rate = !empty( $commission_rate ) ? $commission_rate : 0;
+
+						$output .= '<tr>';
+						$output .= '<td style="padding-left:' . $indent . 'px;">';
+						$output .= $group_user->display_name . ' (' . $group_user->user_email . ')<br>';
+						$output .= '</td>';
+						$output .= '<td>';
+						$output .= '<input id="commission_rate_' . $group_user->ID . '" name="commission_rate[' . $group_user->ID . ']" type="number" min="0" max="100" value="' . $commission_rate. '" />%';
+						$output .= '</td>';
+						$output .= '</tr>';
+					}
 				}
-				$output .= '</ul>';
 
 			}
+
 			if ( !empty( $nodes ) ) {
-				$this->build_commission_tree_output( $nodes, $output );
+				$this->build_commission_tree_output( $nodes, $output, $indent + 15 );
 			}
-			$output .= '</li>';
 		}
-		$output .= '</ol>';
+	}
+
+
+	/**
+	 * Recursively build a string that contains a hierarchical view
+	 * of the entire commission tree and its users
+	 *
+	 * @since    1.0.0
+	 */
+	public function build_hierarchical_vendor_group_select( &$tree, &$output, $indent ) {
+		foreach( $tree as $group_id => $nodes ) {
+			$group = new Groups_Group( $group_id );
+			if ( $group ) {
+				$output .= '<option value="' . $group_id . '">' . $indent . ' ' . $group->name . '</option>';
+			}
+
+			if ( !empty( $nodes ) ) {
+				$this->build_hierarchical_vendor_group_select( $nodes, $output, $indent . '—' );
+			}
+		}
 	}
 
 }
+
+/*
+
+Add new Vendor
+- Enter name, email, password, etc.
+- Choose parent vendor group
+
+- Create user
+- Create group
+- Add to Vendor role
+
+
+*/

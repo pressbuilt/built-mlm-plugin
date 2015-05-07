@@ -76,6 +76,7 @@ class Built_Mlm {
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 
+		add_shortcode( 'built_join',  array( __CLASS__, 'built_join' ) );
 	}
 
 	/**
@@ -217,6 +218,115 @@ class Built_Mlm {
 	 */
 	public function get_version() {
 		return $this->version;
+	}
+
+	/**
+	 * Renders a form that lets a user join a group.
+	 * * Attributes:
+	 * - "group" : (required) group name or id
+	 * 
+	 * @param array $atts attributes
+	 * @param string $content not used
+	 */
+	public static function built_join( $atts, $content = null ) {
+		$nonce_action = 'groups_action';
+		$nonce        = 'nonce_join';
+		$output       = "";
+
+		$options = shortcode_atts(
+			array(
+				'vendor_id'         => '',
+				'display_message'   => true,
+				'display_is_member' => false,
+				'submit_text'       => __( 'Join the %s vendor', GROUPS_PLUGIN_DOMAIN )
+			),
+			$atts
+		);
+		extract( $options );
+
+		if ( $display_message === 'false' ) {
+			$display_message = false;
+		}
+		if ( $display_is_member === 'true' ) {
+			$display_is_member = true;
+		}
+
+		$mlm_options = get_option( 'built_mlm_settings' );
+		$group_tree = Groups_Utility::get_group_tree();
+		if ( !isset( $group_tree[$mlm_options['built_mlm_root_group']] ) ) {
+			die('no group');
+		}
+		$group_tree = $group_tree[$mlm_options['built_mlm_root_group']];
+
+		$vendor_id = trim( $options['vendor_id'] );
+		$vendor = new Groups_User($vendor_id);
+		foreach ($vendor->groups as $vendor_group) {
+			if ($vendor_group->group->group_id == 1) continue;
+			$group = $vendor_group->group->group_id;
+		}
+
+		$current_group = Groups_Group::read( $group );
+		if ( !$current_group ) {
+			$current_group = Groups_Group::read_by_name( $group );
+		}
+		if ( $current_group ) {
+			if ( $user_id = get_current_user_id() ) {
+				$submitted     = false;
+				$invalid_nonce = false;
+				if ( !empty( $_POST['groups_action'] ) && $_POST['groups_action'] == 'join' ) {
+					$submitted = true;
+					if ( !wp_verify_nonce( $_POST[$nonce], $nonce_action ) ) {
+						$invalid_nonce = true;
+					}
+				}
+				if ( $submitted && !$invalid_nonce ) {
+					// remove user from current group
+					$user = new Groups_User($user_id);
+					$leave_group = '';
+					foreach ($user->groups as $user_group) {
+						if ($user_group->group->group_id == 1) continue;
+						$leave_group = $user_group->group;
+					}
+					if ($leave_group) {
+						Groups_User_Group::delete( $user_id, $leave_group->group_id );
+					}
+
+					// add user to group
+					if ( isset( $_POST['group_id'] ) ) {
+						$join_group = Groups_Group::read( $_POST['group_id'] );
+						Groups_User_Group::create(
+							array(
+								'group_id' => $join_group->group_id,
+								'user_id' => $user_id
+							)
+						);
+					}
+				}
+				if ( !Groups_User_Group::read( $user_id, $current_group->group_id ) ) {
+					$submit_text = sprintf( $options['submit_text'], wp_filter_nohtml_kses( $current_group->name ) );
+					$output .= '<div class="groups-join">';
+					$output .= '<form action="#" method="post">';
+					$output .= '<input type="hidden" name="groups_action" value="join" />';
+					$output .= '<input type="hidden" name="group_id" value="' . esc_attr( $current_group->group_id ) . '" />';
+					$output .= '<input type="submit" value="' . $submit_text . '" />';
+					$output .=  wp_nonce_field( $nonce_action, $nonce, true, false );
+					$output .= '</form>';
+					$output .= '</div>';
+				} else if ( $display_message ) {
+					if ( $submitted && !$invalid_nonce && isset( $join_group ) && $join_group->group_id === $current_group->group_id ) {
+						$output .= '<div class="groups-join joined">';
+						$output .= sprintf( __( 'You have joined the %s vendor.', GROUPS_PLUGIN_DOMAIN ), wp_filter_nohtml_kses( $join_group->name ) );
+						$output .= '</div>';
+					}
+					else if ( $display_is_member && isset( $current_group ) && $current_group !== false ) {
+						$output .= '<div class="groups-join member">';
+						$output .= sprintf( __( 'You are with the %s vendor.', GROUPS_PLUGIN_DOMAIN ), wp_filter_nohtml_kses( $current_group->name ) );
+						$output .= '</div>';
+					}
+				}
+			}
+		}
+		return $output;
 	}
 
 }
