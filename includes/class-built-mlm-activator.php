@@ -31,6 +31,12 @@ class Built_Mlm_Activator {
 	 */
 	public static function activate() {
 
+		remove_role( 'vendor' );
+
+		add_role( 'vendor', 'Vendor', array(
+			'view_woocommerce_reports' => true,
+		) );
+		
 	}
 
 }

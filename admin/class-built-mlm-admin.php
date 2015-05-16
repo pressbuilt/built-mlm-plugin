@@ -98,6 +98,16 @@ class Built_Mlm_Admin {
 		add_submenu_page( 'built-mlm', 'Settings', 'Settings', 'manage_options', 'built-mlm', array( $this, 'main_settings' ) );
 		add_submenu_page( 'built-mlm', 'Manage Commission Rates', 'Commission Rates', 'manage_options', 'built-mlm-commission-rates', array( $this, 'manage_commission_rates' ) );
 
+		// Adds a submenu to the WCV Shop Settings menu for the Vendor's commission report page
+		$hook = add_submenu_page(
+			'wcv-vendor-shopsettings',
+			__( 'Commission', 'wcvendors' ), __( 'Commission', 'wcvendors' ),
+			'manage_product',
+			'pv_admin_commissions',
+			array( 'WCV_Admin_Setup', 'commissions_page' )
+		);
+		add_action( "load-$hook", array( 'WCV_Admin_Setup', 'add_options' ) );
+
 	}
 
 	/**
@@ -122,6 +132,16 @@ class Built_Mlm_Admin {
 			'built-mlm',
 			'built_mlm_settings_general',
 			array( 'label_for' => 'built_mlm_root_group' )
+		);
+		
+		// Permalink settings field
+		add_settings_field(
+			'built_mlm_permalink_base',
+			__( 'Shop Permalink Base', $this->plugin_name ),
+			array( $this, 'settings_field_shop_permalink_base' ),
+			'built-mlm',
+			'built_mlm_settings_general',
+			array( 'label_for' => 'built_mlm_permalink_base' )
 		);
 		
 		// Register settings so that $_POST is handled
@@ -169,6 +189,26 @@ class Built_Mlm_Admin {
 	}
 
 	/**
+	 * Output Shop Permalink Base setting field
+	 *
+	 * @since    1.0.0
+	 */
+	function settings_field_shop_permalink_base( $args ) {
+
+		$options = get_option( 'built_mlm_settings' );
+
+		$permalink_text = '';
+		if ( isset( $options['built_mlm_permalink_base'] ) ) {
+			$permalink_text = $options['built_mlm_permalink_base'];
+		}
+
+ 		?>
+ 		<input type="text" name="built_mlm_settings[built_mlm_permalink_base]" id="built_mlm_permalink_base" class="regular-text" value="<?php echo $permalink_text; ?>">
+ 		<p><small>e.g., <code>http://example.com/[<strong>your_permalink_base</strong>]/[vendor_name]/</code></small></p>
+		<?php
+	}
+
+	/**
 	 * Sanitize settings values
 	 *
 	 * @since    1.0.0
@@ -196,6 +236,16 @@ class Built_Mlm_Admin {
 							$option_name,
 							esc_attr( 'built_mlm_root_group' ),
 							__( 'Invalid option selected for Root Vendor Group setting', $this->plugin_name ),
+							'error'
+						);
+					}
+					break;
+				case 'built_mlm_permalink_base':
+					if ( !ctype_alnum( $option_value ) ) {
+						add_settings_error(
+							$option_name,
+							esc_attr( 'built_mlm_permalink_base' ),
+							__( 'Invalid characters for Shop Permalink Base setting. Please remove special characters or spaces', $this->plugin_name ),
 							'error'
 						);
 					}
