@@ -193,6 +193,9 @@ class Built_Mlm {
 		$this->loader->add_action( 'woocommerce_product_query', $plugin_public, 'vendor_shop_query', 11, 2 );
 		$this->loader->add_action( 'woocommerce_add_order_item_meta', $plugin_public, 'add_vendor_to_order_item_meta', 15, 2 );
 
+		// redirect visitors to a shop page not in a vendor group to the login page, otherwise redirect to the vendor shop page
+		$this->loader->add_action( 'template_redirect', $plugin_public, 'shop_redirect' );
+
 		// Enqueue scripts and styles
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );

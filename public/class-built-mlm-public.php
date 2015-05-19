@@ -454,9 +454,9 @@ class Built_Mlm_Public {
     	if ( is_shop() ) {
 			$vendor_shop = urldecode( get_query_var( 'vendor_shop' ) );
 			$vendor_id = Built_Mlm::get_vendor_id( $vendor_shop );
-			$shop_name = Built_Mlm::get_vendor_shop_name( $vendor_id );
-			if ( !empty( $shop_name) ) 
-				return str_replace( __( 'Products', 'woocommerce' ), $shop_name, $title );
+			$shop_page_name = Built_Mlm::get_vendor_shop_name( $vendor_id );
+			if ( !empty( $shop_page_name) ) 
+				return str_replace( __( 'Products', 'woocommerce' ), $shop_page_name, $title );
 		}
 
 		return $title;
@@ -475,6 +475,54 @@ class Built_Mlm_Public {
 			echo '<div class="pv_shop_description">';
 			echo wpautop( wptexturize( wp_kses_post( $description ) ) );
 			echo '</div>';
+		}
+	}
+
+	public static function shop_redirect() {
+
+		global $wp_query;
+
+		if ( class_exists( 'Groups_User_Group' ) ) { // faster than self::groups_is_active
+
+			$redirect_status = intval( '301' );
+
+			$current_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+
+			$current_post_id = url_to_postid( $current_url );
+			if ( !$current_post_id ) {
+				$current_post_id = $wp_query->get_queried_object_id();
+			}
+
+			$shop_page = get_page_by_title( 'shop', 'OBJECT', 'page' );
+			$vendors_page = get_page_by_title( 'vendors', 'OBJECT', 'page' );
+
+			$vendor_id = false;
+			$user_id = get_current_user_id();
+			$group_id = Built_Mlm::get_user_group_id( $user_id );
+			if (!empty($group_id)) {
+				$vendor_id = Built_Mlm::get_group_vendor_id( $group_id );
+				$vendor_shop_page = Built_Mlm::get_vendor_shop_page( $vendor_id );
+			}
+
+			if ( $current_post_id == $shop_page->ID && !empty($vendor_shop_page) ) {
+				wp_redirect( $vendor_shop_page, $redirect_status );
+				exit;
+			}
+
+			$vendor_shop = urldecode( get_query_var( 'vendor_shop' ) );
+			if (!empty($vendor_shop)) {
+				$vendor_shop_user_id = Built_Mlm::get_vendor_id( $vendor_shop );
+			}
+
+			if ( !empty($vendor_shop) && $vendor_shop_user_id !== $vendor_id ) {
+				wp_redirect( $vendor_shop_page, $redirect_status );
+				exit;
+			}
+
+			if ( $current_url !== wp_login_url( $current_url ) && (!empty($vendor_shop) || $current_post_id == $shop_page->ID) && !$vendor_id ) {
+				wp_redirect( get_permalink( $vendors_page->ID ), $redirect_status );
+				exit;
+			}
 		}
 	}
 
