@@ -189,16 +189,9 @@ class Built_Mlm {
 		$this->loader->add_action( 'woocommerce_before_main_content', $plugin_public, 'shop_description', 30 );
 		$this->loader->add_filter( 'wp_title', $plugin_public, 'shop_page_title' );
 
-		//add_filter( 'pv_product_author', array( __CLASS__, 'pv_product_author' ), 10, 1 );
-		//add_filter( 'pv_vendors_from_order', array( __CLASS__, 'pv_vendors_from_order' ), 10, 2 );
-
-		//$this->loader->add_action( 'wcv_commissions_inserted', $plugin_public, 'wcv_commissions_inserted' );
-
 		//overwrite the order item meta from wcvendors
 		$this->loader->add_action( 'woocommerce_product_query', $plugin_public, 'vendor_shop_query', 11, 2 );
 		$this->loader->add_action( 'woocommerce_add_order_item_meta', $plugin_public, 'add_vendor_to_order_item_meta', 15, 2 );
-		//$this->loader->add_action( 'woocommerce_checkout_update_order_meta', $plugin_public, 'update_order_meta' );
-		//$this->loader->add_action( 'woocommerce_thankyou', $plugin_public, 'custom_woocommerce_auto_complete_order' );
 
 		// Enqueue scripts and styles
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
@@ -267,40 +260,6 @@ class Built_Mlm {
 		return self::$vendor_roles;
 	}
 
-	/*
-	public static function pv_product_author( $author ) {
-
-		$user_id = get_current_user_id();
-		$group_id = self::get_user_group_id( $user_id );
-
-		if (!empty($group_id)) {
-			$vendor_id = self::get_group_vendor_id( $group_id );
-
-			if (!empty($vendor_id)) {
-				$author = $vendor_id;
-			}
-		}
-
-		return $author;
-	}
-
-	public static function pv_vendors_from_order( $vendors, $order ) {
-		if (in_array($order->post_status, array('wc-completed'))) {
-			$user_id = $order->user_id;
-			$group_id = self::get_user_group_id( $user_id );
-			$vendor_id = self::get_group_vendor_id( $group_id );
-
-			if (!empty($vendor_id)) {
-				$vendors = array();
-				$author = $vendor_id;
-				$vendors[ $author ] = the_author_meta( 'author_paypal', $author );
-			}
-		}
-
-		return $vendors;
-	}
-	*/
-
 	// get the group id of a user
 	public static function get_user_group_id ( $user_id ) {
 		// Try to fail as early as possible for performance
@@ -351,29 +310,7 @@ class Built_Mlm {
 			self::get_group_ancestors( $group->group->parent_id, $ancestors );
 		}
 	}
-
-	/*
-	public static function wcv_commissions_inserted( $orders ) {
-
-		global $wpdb;
-		$table = $wpdb->prefix . "pv_commission";
-
-		foreach ($orders as $order) {
-			$order = new WC_Order( $order['order_id'] );
-			$user_id = $order->user_id;
-			$group_id = self::get_user_group_id( $user_id );
-			$vendor_id = self::get_group_vendor_id( $group_id );
-
-			$where = array('order_id' => $order->id);
-
-			if (!empty($vendor_id)) {
-				$new_vendor = array('vendor_id' => $vendor_id);
-				$update = $wpdb->update( $table, $new_vendor, $where );
-			}
-		}
-	}
-	*/
-
+	
 	public static function custom_woocommerce_auto_complete_order( $order_id ) {
 		global $woocommerce;
 
@@ -515,4 +452,83 @@ class Built_Mlm {
 		return $shop_name;
 	}
 
+	/**
+	 * Generic function for generating commission reports
+	 *
+	 * @return array
+	 */
+	public static function get_commissions( $parameters )
+	{
+		global $wpdb;
+
+		/*
+		array(
+			'vendor_id' => $vendor_id,
+			'start_date' => $start_date,
+			'end_date' => $end_date,
+			'include_sub_vendors' => $include_sub_vendors,
+			'include_parent_vendors' => $include_parent_vendors
+		)
+		*/
+
+		
+
+		//$user_id = get_current_user_id();
+
+		//$sub_vendor_users = Built_Mlm::get_sub_vendors( $user_id );
+
+		//$vendor_user_ids = array( $user_id );
+		//foreach ( $sub_vendor_users as $sub_vendor_user ) {
+		//	$vendor_user_ids[] = $sub_vendor_user->ID;
+		//}
+					
+		//AND vendor.meta_value IN (" . implode( ', ', array_fill( 0, count( $vendor_user_ids ), '%d' ) ) . ")
+
+		$vendor_user_ids = array(1);
+
+		$sql = "
+			SELECT
+				order.post_date as 'order_date',
+				item.order_id,
+				item.order_item_id,
+				item.order_item_name,
+				vendor.meta_value as 'vendor_user_id',
+				commissions.meta_value as 'commissions'
+			FROM {$wpdb->prefix}posts `order`
+				INNER JOIN {$wpdb->prefix}woocommerce_order_items item ON
+					order.ID = item.order_id
+				INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta vendor ON
+					item.order_item_id = vendor.order_item_id
+					AND vendor.meta_key = 'built_mlm_vendor_user_id'
+				INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta commissions ON
+					item.order_item_id = commissions.order_item_id
+					AND commissions.meta_key = 'built_mlm_commissions'
+			WHERE
+				order.post_type = 'shop_order'
+		";
+
+		$query = $sql;
+		$order_items = $wpdb->get_results( $query, ARRAY_A  );
+
+		$commissions = array();
+		foreach ( $order_items as $order_item ) {
+
+			$commission_payouts = maybe_unserialize( $order_item['commissions'] );
+			foreach ( $commission_payouts as $payout ) {
+
+				if ( !isset( $commissions[ $payout['vendor_id'] ]['user'] ) ) {
+					$commissions[ $payout['vendor_id'] ]['user'] = get_userdata( $payout['vendor_id'] );
+				}
+
+				if ( !isset( $commissions[ $payout['vendor_id'] ]['earnings'] ) ) {
+					$commissions[ $payout['vendor_id'] ]['earnings'] = 0;
+				}
+
+				$commissions[ $payout['vendor_id'] ]['earnings'] += $payout['commission_earned'];
+			}
+
+		}
+		
+		return $commissions;
+	}
 }

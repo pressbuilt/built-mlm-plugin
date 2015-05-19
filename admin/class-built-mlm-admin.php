@@ -97,16 +97,7 @@ class Built_Mlm_Admin {
 		// Sub-menus
 		add_submenu_page( 'built-mlm', 'Settings', 'Settings', 'manage_options', 'built-mlm', array( $this, 'main_settings' ) );
 		add_submenu_page( 'built-mlm', 'Manage Commission Rates', 'Commission Rates', 'manage_options', 'built-mlm-commission-rates', array( $this, 'manage_commission_rates' ) );
-
-		// Adds a submenu to the WCV Shop Settings menu for the Vendor's commission report page
-		$hook = add_submenu_page(
-			'wcv-vendor-shopsettings',
-			__( 'Commission', 'wcvendors' ), __( 'Commission', 'wcvendors' ),
-			'manage_product',
-			'pv_admin_commissions',
-			array( 'WCV_Admin_Setup', 'commissions_page' )
-		);
-		add_action( "load-$hook", array( 'WCV_Admin_Setup', 'add_options' ) );
+		add_submenu_page( 'built-mlm', 'Commission Reports', 'Commission Reports', 'manage_options', 'built-mlm-commission-reports', array( $this, 'manage_commission_reports' ) );
 
 	}
 
@@ -298,15 +289,12 @@ class Built_Mlm_Admin {
 	 * @since    1.0.0
 	 */
 	public function createNewVendor( $user_id, $parent_vendor_group_id = null ) {
-		echo '<pre>' . print_r($user_id, 1) . '</pre>';	
-		echo '<pre>' . print_r($parent_vendor_group_id, 1) . '</pre>';
 
 		$user = get_userdata( $user_id );
 
 		if ( empty( $user->ID ) ) {
 			return false;
 		}
-
 
 		// Check to see if a group exists for this vendor already
 		$group = Groups_Group::read_by_name( $user->user_login );
@@ -346,7 +334,7 @@ class Built_Mlm_Admin {
 	}
 
 	/**
-	 * Manage commission ratese for all vendors
+	 * Manage commission rates for all vendors
 	 *
 	 * @since    1.0.0
 	 */
@@ -457,6 +445,36 @@ class Built_Mlm_Admin {
 			</p>
 		</form>
 		<?php
+	}
+
+	/**
+	 * View vendor commission reports
+	 *
+	 * @since    1.0.0
+	 */
+	public function manage_commission_reports() {
+
+		if ( !class_exists( 'Groups_Group' ) ) {
+			return;
+		}
+
+		$options = get_option( 'built_mlm_settings' );
+
+		if ( empty( $options['built_mlm_root_group'] ) ) {
+			?>
+			<p><?php echo __( 'Please select a root vendor group in the main settings.', $this->plugin_name ); ?></p>
+			<?php
+		}
+
+		$commissions = Built_Mlm::get_commissions(array(
+		//	'vendor_id' => $vendor_id,
+		//	'start_date' => $start_date,
+		//	'end_date' => $end_date,
+		//	'include_sub_vendors' => $include_sub_vendors,
+		//	'include_parent_vendors' => $include_parent_vendors
+		));
+
+		require( dirname( __FILE__) . '/partials/commission-reports.php' );
 	}
 
 
