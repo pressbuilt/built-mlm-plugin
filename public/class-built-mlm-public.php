@@ -493,8 +493,10 @@ class Built_Mlm_Public {
 				$current_post_id = $wp_query->get_queried_object_id();
 			}
 
+			$options = get_option( 'built_mlm_settings' );
+			$vendors_page_id = $options['built_mlm_vendors_page'];
+
 			$shop_page = get_page_by_title( 'shop', 'OBJECT', 'page' );
-			$vendors_page = get_page_by_title( 'vendors', 'OBJECT', 'page' );
 
 			$vendor_id = false;
 			$user_id = get_current_user_id();
@@ -507,6 +509,8 @@ class Built_Mlm_Public {
 			if ( $current_post_id == $shop_page->ID && !empty($vendor_shop_page) ) {
 				wp_redirect( $vendor_shop_page, $redirect_status );
 				exit;
+			} else if ( $current_post_id == $shop_page->ID ) {
+				wp_redirect( get_permalink( $vendors_page_id ), $redirect_status );
 			}
 
 			$vendor_shop = urldecode( get_query_var( 'vendor_shop' ) );
@@ -520,7 +524,7 @@ class Built_Mlm_Public {
 			}
 
 			if ( $current_url !== wp_login_url( $current_url ) && (!empty($vendor_shop) || $current_post_id == $shop_page->ID) && !$vendor_id ) {
-				wp_redirect( get_permalink( $vendors_page->ID ), $redirect_status );
+				wp_redirect( get_permalink( $vendors_page_id ), $redirect_status );
 				exit;
 			}
 		}

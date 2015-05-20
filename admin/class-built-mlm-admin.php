@@ -135,6 +135,16 @@ class Built_Mlm_Admin {
 			array( 'label_for' => 'built_mlm_permalink_base' )
 		);
 		
+		// Vendors page settings field
+		add_settings_field(
+			'built_mlm_vendors_page',
+			__( 'Vendors Page', $this->plugin_name ),
+			array( $this, 'settings_field_vendors_page' ),
+			'built-mlm',
+			'built_mlm_settings_general',
+			array( 'label_for' => 'built_mlm_vendors_page' )
+		);
+		
 		// Register settings so that $_POST is handled
 		register_setting( 'built-mlm', 'built_mlm_settings', array( $this, 'sanitize_setting_values' ) );
 	}
@@ -195,7 +205,35 @@ class Built_Mlm_Admin {
 
  		?>
  		<input type="text" name="built_mlm_settings[built_mlm_permalink_base]" id="built_mlm_permalink_base" class="regular-text" value="<?php echo $permalink_text; ?>">
- 		<p><small>e.g., <code>http://example.com/[<strong>your_permalink_base</strong>]/[vendor_name]/</code></small></p>
+ 		<p><small>e.g., <code>http://example.com/<strong>[your_permalink_base]</strong>/[vendor_name]/</code></small><br>
+ 			Note: you may need to re-save permalinks after setting the above.</p>
+		<?php
+	}
+
+	/**
+	 * Output Root Vendor Group setting field
+	 *
+	 * @since    1.0.0
+	 */
+	function settings_field_vendors_page( $args ) {
+
+		$options = get_option( 'built_mlm_settings' );
+
+		$selected = '';
+		if ( isset( $options['built_mlm_vendors_page'] ) ) {
+			$selected = $options['built_mlm_vendors_page'];
+		}
+
+		// Fetch all pages that have been published
+		$pages = get_pages();
+
+ 		?>
+ 		<select name="built_mlm_settings[built_mlm_vendors_page]" id="built_mlm_vendors_page">
+ 			<option value="0">Select a page</option>
+ 			<?php foreach ( $pages as $page ) { ?>
+ 				<option value="<?php echo $page->ID; ?>" <?php echo ( $page->ID == $selected ? 'selected="selected"' : '' ); ?>><?php echo $page->post_title; ?></option>
+ 			<?php } ?>
+		</select>
 		<?php
 	}
 
@@ -237,6 +275,29 @@ class Built_Mlm_Admin {
 							$option_name,
 							esc_attr( 'built_mlm_permalink_base' ),
 							__( 'Invalid characters for Shop Permalink Base setting. Please remove special characters or spaces', $this->plugin_name ),
+							'error'
+						);
+					}
+					break;
+				case 'built_mlm_vendors_page':
+					if ( !ctype_digit( $option_value ) ) {
+						$data[$option_name] = 0;
+						add_settings_error(
+							$option_name,
+							esc_attr( 'built_mlm_vendors_page' ),
+							__( 'Invalid option selected for Vendors Page setting', $this->plugin_name ),
+							'error'
+						);
+					}
+
+					// Fetch all pages that have been published
+					$page_ids = get_all_page_ids();
+					if ( !in_array( $option_value, $page_ids ) ) {
+						$data[$option_name] = 0;
+						add_settings_error(
+							$option_name,
+							esc_attr( 'built_mlm_vendors_page' ),
+							__( 'Invalid option selected for Vendors Page setting', $this->plugin_name ),
 							'error'
 						);
 					}
