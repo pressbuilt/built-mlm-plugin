@@ -69,7 +69,28 @@ class Built_Mlm_Public {
 	 */
 	public static function add_vendor_to_order_item_meta( $item_id, $cart_item ) {
 
-		$group_id = Built_Mlm::get_user_group_id( get_current_user_id() );
+		$user_id = get_current_user_id();
+
+		if ( !empty( $_POST['built_mlm_vendor_user_id'] ) ) {
+			$group_id = Built_Mlm::get_user_group_id( $_POST['built_mlm_vendor_user_id'] );
+
+			// remove user from current group if necessary
+			$leave_group_id = Built_Mlm::get_user_group_id( $user_id );
+			if ($leave_group_id) {
+				Groups_User_Group::delete( $user_id, $leave_group_id );
+			}
+
+			// add user to group
+			$join_group = Groups_Group::read( $group_id );
+			Groups_User_Group::create(
+				array(
+					'group_id' => $join_group->group_id,
+					'user_id' => $user_id
+				)
+			);
+		} else {
+			$group_id = Built_Mlm::get_user_group_id( $user_id );
+		}
 
 		if ( !empty( $group_id ) ) {
 			$vendor_id = Built_Mlm::get_group_vendor_id( $group_id );
@@ -87,19 +108,18 @@ class Built_Mlm_Public {
 
 	public static function vendor_shop_query( $q, $this ) {
 
+		global $woocommerce;
 
-		$options = get_option( 'built_mlm_settings' );
-		if ( empty( $options['built_mlm_root_group'] ) ) return;
+		$vendor_shop = urldecode( get_query_var( 'vendor_shop' ) );
+		$vendor_id = Built_Mlm::get_vendor_id( $vendor_shop );
 
-		$root_group = new Groups_Group( $options['built_mlm_root_group'] );
+		if ( $vendor_id ) {
+			$woocommerce->session->set( 'built_mlm_session_vendor_id' , $vendor_id );
+		} else {
+			$woocommerce->session->__unset( 'built_mlm_session_vendor_id' );
+		}
 
-		$vendor_id = Built_Mlm::get_group_vendor_id( $root_group->group_id );
-
-		//$vendor_id   = WCV_Vendors::get_vendor_id( 'root_vendor' );
-
-		if ( !$vendor_id ) return;
-
-		$q->set( 'author', $vendor_id );
+		//$q->set( 'author', $vendor_id );
 	}
 
 	/**
@@ -179,7 +199,7 @@ class Built_Mlm_Public {
 	  	// Get all vendors 
 	  	$vendor_total_args = array ( 
 	  		'role' 				=> 'vendor', 
-	  		'meta_key' 			=> 'pv_shop_slug', 
+	  		'meta_key' 			=> 'built_mlm_shop_slug', 
   			'meta_value'   		=> '',
 			'meta_compare' 		=> '>',
 			'orderby' 			=> $orderby,
@@ -194,7 +214,7 @@ class Built_Mlm_Public {
 	  	// Get the paged vendors 
 	  	$vendor_paged_args = array ( 
 	  		'role' 				=> 'vendor', 
-	  		'meta_key' 			=> 'pv_shop_slug', 
+	  		'meta_key' 			=> 'built_mlm_shop_slug', 
   			'meta_value'   		=> '',
 			'meta_compare' 		=> '>',
 			'orderby' 			=> $orderby,
@@ -293,7 +313,6 @@ class Built_Mlm_Public {
 				}
 				if ( $submitted && !$invalid_nonce ) {
 					// remove user from current group
-					$user = new Groups_User($user_id);
 					$leave_group_id = Built_Mlm::get_user_group_id( $user_id );
 					if ($leave_group_id) {
 						Groups_User_Group::delete( $user_id, $leave_group_id );
@@ -435,6 +454,7 @@ class Built_Mlm_Public {
 	 *
 	 */
 	public static function add_rewrite_rules() {
+
 		$options = get_option( 'built_mlm_settings' );
 		if ( empty( $options['built_mlm_permalink_base'] ) ) return;
 		$permalink = untrailingslashit( $options['built_mlm_permalink_base'] );
@@ -453,10 +473,12 @@ class Built_Mlm_Public {
 	public static function shop_page_title( $title ) {
     	if ( is_shop() ) {
 			$vendor_shop = urldecode( get_query_var( 'vendor_shop' ) );
-			$vendor_id = Built_Mlm::get_vendor_id( $vendor_shop );
-			$shop_page_name = Built_Mlm::get_vendor_shop_name( $vendor_id );
-			if ( !empty( $shop_page_name) ) 
-				return str_replace( __( 'Products', 'woocommerce' ), $shop_page_name, $title );
+			if ($vendor_shop) {
+				$vendor_id = Built_Mlm::get_vendor_id( $vendor_shop );
+				$shop_page_name = Built_Mlm::get_vendor_shop_name( $vendor_id );
+				if ( !empty( $shop_page_name) ) 
+					return str_replace( __( 'Products', 'woocommerce' ), $shop_page_name, $title );
+			}
 		}
 
 		return $title;
@@ -466,13 +488,14 @@ class Built_Mlm_Public {
 	 * Show the description a vendor sets when viewing products by that vendor
 	 */
 	public static function shop_description() {
+
 		$vendor_shop = urldecode( get_query_var( 'vendor_shop' ) );
 		$vendor_id   = Built_Mlm::get_vendor_id( $vendor_shop );
 
 		if ( $vendor_id ) {
 			$description = do_shortcode( get_user_meta( $vendor_id, 'built_mlm_shop_description', true ) );
 
-			echo '<div class="pv_shop_description">';
+			echo '<div class="built_mlm_shop_description">';
 			echo wpautop( wptexturize( wp_kses_post( $description ) ) );
 			echo '</div>';
 		}
@@ -528,6 +551,48 @@ class Built_Mlm_Public {
 				exit;
 			}
 		}
+	}
+
+	public static function vendor_checkout_field( $fields ) {
+
+		global $woocommerce;
+
+		$group_id = Built_Mlm::get_user_group_id( get_current_user_id() );
+		$vendor_id = '';
+		if ( !empty( $group_id ) ) {
+			$vendor_id = Built_Mlm::get_group_vendor_id( $group_id );
+		}
+
+		$session_vendor_id = $woocommerce->session->get( 'built_mlm_session_vendor_id' );
+		if ( !empty( $session_vendor_id ) ) {
+			$vendor_id = $session_vendor_id;
+		}
+
+		// Get all vendors 
+		$vendor_args = array ( 
+			'role' => 'vendor', 
+		);
+		$vendor_query = New WP_User_Query( $vendor_args );
+		$all_vendors = $vendor_query->get_results();
+
+		$vendors_options[] = '';
+		foreach ($all_vendors as $vendor) {
+			$vendors_options[$vendor->ID] = $vendor->user_nicename;
+		}
+
+		$fields['order']['built_mlm_vendor_user_id'] = array(
+				'label'			=> __('Your Distributor (optional)', 'woocommerce'),
+				'placeholder'	=> _x('Vendor', 'placeholder', 'woocommerce'),
+				'required'		=> false,
+				'clear'			=> false,
+				'hidden'		=> true,
+				'type'			=> 'select',
+				'class'			=> array('form-row-wide'),
+				'options'		=> $vendors_options,
+				'default'		=> $vendor_id
+		);
+
+		return $fields;
 	}
 
 }

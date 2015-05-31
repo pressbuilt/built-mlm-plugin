@@ -490,9 +490,10 @@ class Built_Mlm_Admin {
 						</th>
 						<td>
 							<select name="parent_vendor_group_id" id="parent-vendor-group-id">
+								<option value="<?php echo $options['built_mlm_root_group']; ?>"><?php echo Groups_Group::read($options['built_mlm_root_group'])->name; ?></option>
 							<?php
 								$group_select_output = '';
-								$this->build_hierarchical_vendor_group_select($group_tree, $group_select_output, $indent = '');
+								$this->build_hierarchical_vendor_group_select($group_tree, $group_select_output, $indent = '—');
 								echo $group_select_output;
 							?>
 							</select>
@@ -527,13 +528,26 @@ class Built_Mlm_Admin {
 			<?php
 		}
 
+		// Apply any date-related filters
+		$selected_date = 0;
+		$start_date = null;
+		$end_date = null;
+		if ( !empty( $_POST['date'] ) && preg_match('/[^0-9-]/', $_POST['date'] ) !== false ) {
+			$selected_date = $_POST['date'];
+
+			$start_date = $_POST['date'].'-01';
+			$end_date = date( 'Y-m-t', strtotime( $start_date ) );
+		}
+
 		$commissions = Built_Mlm::get_commissions(array(
 		//	'vendor_id' => $vendor_id,
-		//	'start_date' => $start_date,
-		//	'end_date' => $end_date,
+			'start_date' => $start_date,
+			'end_date' => $end_date,
 		//	'include_sub_vendors' => $include_sub_vendors,
 		//	'include_parent_vendors' => $include_parent_vendors
 		));
+
+		$dates = Built_Mlm::get_commission_dates();
 
 		require( dirname( __FILE__) . '/partials/commission-reports.php' );
 	}
@@ -604,16 +618,3 @@ class Built_Mlm_Admin {
 	}
 
 }
-
-/*
-
-Add new Vendor
-- Enter name, email, password, etc.
-- Choose parent vendor group
-
-- Create user
-- Create group
-- Add to Vendor role
-
-
-*/

@@ -9,8 +9,8 @@
 
 <div style="display:inline-block; margin-right:10%;">
         <center>
-        <?php echo get_avatar($vendor_id, 200); ?><br />
-        <?php echo do_shortcode('[built_join_vendor_group vendor_id="'.$vendor_id.'" display_is_member="yes"]'); ?>
+        <a href="<?php echo $shop_link; ?>"><?php echo get_avatar($vendor_id, 200); ?></a><br />
+        <a href="<?php echo $shop_link; ?>" class="button"><?php echo $shop_name; ?></a>
         <br /><br />
         </center>
 </div>

@@ -189,12 +189,15 @@ class Built_Mlm {
 		$this->loader->add_action( 'woocommerce_before_main_content', $plugin_public, 'shop_description', 30 );
 		$this->loader->add_filter( 'wp_title', $plugin_public, 'shop_page_title' );
 
-		//overwrite the order item meta from wcvendors
 		$this->loader->add_action( 'woocommerce_product_query', $plugin_public, 'vendor_shop_query', 11, 2 );
+
+		//overwrite the order item meta from wcvendors
 		$this->loader->add_action( 'woocommerce_add_order_item_meta', $plugin_public, 'add_vendor_to_order_item_meta', 15, 2 );
 
 		// redirect visitors to a shop page not in a vendor group to the login page, otherwise redirect to the vendor shop page
-		$this->loader->add_action( 'template_redirect', $plugin_public, 'shop_redirect' );
+		//$this->loader->add_action( 'template_redirect', $plugin_public, 'shop_redirect' );
+
+		$this->loader->add_filter( 'woocommerce_checkout_fields' , $plugin_public, 'vendor_checkout_field' );
 
 		// Enqueue scripts and styles
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
@@ -474,18 +477,15 @@ class Built_Mlm {
 		)
 		*/
 
-		
 
-		//$user_id = get_current_user_id();
+		$conditions = array();
+		if ( !empty( $parameters['start_date'] ) ) {
+			$conditions[] = "order.post_date >= '" . $parameters['start_date'] . "'";
+		}
 
-		//$sub_vendor_users = Built_Mlm::get_sub_vendors( $user_id );
-
-		//$vendor_user_ids = array( $user_id );
-		//foreach ( $sub_vendor_users as $sub_vendor_user ) {
-		//	$vendor_user_ids[] = $sub_vendor_user->ID;
-		//}
-					
-		//AND vendor.meta_value IN (" . implode( ', ', array_fill( 0, count( $vendor_user_ids ), '%d' ) ) . ")
+		if ( !empty( $parameters['end_date'] ) ) {
+			$conditions[] = "order.post_date <= '" . $parameters['end_date'] . "'";
+		}
 
 		$vendor_user_ids = array(1);
 
@@ -510,6 +510,10 @@ class Built_Mlm {
 				order.post_type = 'shop_order'
 		";
 
+		if ( !empty( $conditions ) ) {
+			$sql .= ' AND ' . implode( ' AND ', $conditions );
+		}
+
 		$query = $sql;
 		$order_items = $wpdb->get_results( $query, ARRAY_A  );
 
@@ -533,5 +537,40 @@ class Built_Mlm {
 		}
 		
 		return $commissions;
+	}
+
+	/**
+	 * Get all dates for orders that contain commission information
+	 *
+	 * @return array
+	 */
+	public static function get_commission_dates( $key_format = 'Y-m', $date_format = 'F, Y' )
+	{
+		global $wpdb;
+
+		$sql = "
+			SELECT
+				order.post_date as 'order_date'
+			FROM {$wpdb->prefix}posts `order`
+				INNER JOIN {$wpdb->prefix}woocommerce_order_items item ON
+					order.ID = item.order_id
+				INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta commissions ON
+					item.order_item_id = commissions.order_item_id
+					AND commissions.meta_key = 'built_mlm_commissions'
+			WHERE
+				order.post_type = 'shop_order'
+		";
+
+		$query = $sql;
+		$order_items = $wpdb->get_results( $query, ARRAY_A  );
+
+		$dates = array();
+		foreach ( $order_items as $order_item ) {
+			$key = date( $key_format, strtotime( $order_item['order_date'] ) );
+			$date = date( $date_format, strtotime( $order_item['order_date'] ) );
+			$dates[$key] = $date;
+		}
+
+		return $dates;
 	}
 }
