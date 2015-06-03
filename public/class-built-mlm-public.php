@@ -364,6 +364,23 @@ class Built_Mlm_Public {
 	public function shortcode_vendor_dashboard( $atts ) {
 		global $wpdb;
 
+		$conditions = array();
+
+		// Apply any date-related filters
+		$selected_date = 0;
+		$start_date = null;
+		$end_date = null;
+		if ( !empty( $_POST['date'] ) && preg_match('/[^0-9-]/', $_POST['date'] ) !== false ) {
+			$selected_date = $_POST['date'];
+
+			$start_date = $_POST['date'].'-01';
+			$end_date = date( 'Y-m-t', strtotime( $start_date ) );
+
+			$conditions[] = "wc_order.post_date >= '" . $start_date . "'";
+			$conditions[] = "wc_order.post_date <= '" . $end_date . "'";
+		}
+
+
 		$user_id = get_current_user_id();
 
 		$sub_vendor_users = Built_Mlm::get_sub_vendors( $user_id );
@@ -374,8 +391,16 @@ class Built_Mlm_Public {
 		}
 
 		$sql = "
-			SELECT item.order_id, item.order_item_id, item.order_item_name, vendor.meta_value as 'vendor_user_id', commissions.meta_value as 'commissions'
-			FROM {$wpdb->prefix}woocommerce_order_items item
+			SELECT
+				item.order_id,
+				item.order_item_id,
+				item.order_item_name,
+				vendor.meta_value as 'vendor_user_id',
+				commissions.meta_value as 'commissions'
+
+			FROM {$wpdb->prefix}posts wc_order
+				INNER JOIN {$wpdb->prefix}woocommerce_order_items item ON
+					wc_order.ID = item.order_id
 				INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta vendor ON
 					item.order_item_id = vendor.order_item_id
 					AND vendor.meta_key = 'built_mlm_vendor_user_id'
@@ -383,13 +408,22 @@ class Built_Mlm_Public {
 				INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta commissions ON
 					item.order_item_id = commissions.order_item_id
 					AND commissions.meta_key = 'built_mlm_commissions'
+			WHERE
+				1 = 1
 		";
+
+		if ( !empty( $conditions ) ) {
+			$sql .= ' AND ' . implode( ' AND ', $conditions );
+		}
 
 		$query = call_user_func_array( array( $wpdb, 'prepare' ), array_merge( array( $sql ), $vendor_user_ids ) );
 		$order_items = $wpdb->get_results( $query, ARRAY_A  );
 
 		$line_items = array();
+		$dates = array();
 		foreach ( $order_items as $key => $order_item ) {
+
+			$order = new WC_Order( $order_item['order_id'] );
 
 			$line_item_data = array(
 				'order_id' => $order_item['order_id'],
@@ -398,7 +432,7 @@ class Built_Mlm_Public {
 				'origin_vendor' => get_userdata( $order_item['vendor_user_id'] ),
 				'commission' => 0,
 				'sub_vendor_commission' => 0,
-				'order' => new WC_Order( $order_item['order_id'] )
+				'order' => $order
 			);
 
 			$commissions = unserialize( $order_item['commissions'] );
@@ -411,7 +445,10 @@ class Built_Mlm_Public {
 				}
 
 			}
-				$line_items[] = $line_item_data;
+			
+			$line_items[] = $line_item_data;
+
+			$dates[date('Y-m', strtotime($order->order_date))] = date('F, Y', strtotime($order->order_date));
 		}
 
 		ob_start();

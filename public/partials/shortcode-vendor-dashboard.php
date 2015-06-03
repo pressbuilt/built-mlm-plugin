@@ -1,13 +1,24 @@
-<?php
-
-	//echo '<pre>' . print_r($line_items, 1) . '</pre>';
-
-?>
 <style type="text/css">
 	td { white-space: nowrap; }
 </style>
 
 <h3>Commission Report</h3>
+
+<form method="post">
+	<div class="tablenav top">
+		<div class="alignleft actions">
+			<label for="filter-by-date" class="screen-reader-text">Filter by date</label>
+			<select name="date" id="filter-by-date">
+				<option selected="selected" value="0">All dates</option>
+				<?php foreach ( $dates as $key => $date ) { ?>
+					<option value="<?php echo $key; ?>" <?php echo $key == $selected_date ? 'selected="selected"' : ''; ?>><?php echo $date; ?></option>
+				<?php } ?>
+			</select>
+			<input type="submit" name="filter_action" id="post-query-submit" class="button" value="Filter">
+		</div>
+	</div>
+</form>
+
 <table>
 	<thead>
 		<tr>
@@ -36,7 +47,3 @@
 		?>
 	</tbody>
 </table>
-
-
-
-This is the Vendor Dashboard page <a href="shop_settings">Shop Settings</a>
