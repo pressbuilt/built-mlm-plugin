@@ -475,8 +475,6 @@ class Built_Mlm_Public {
 			update_user_meta( $user_id, 'built_mlm_shop_description', $_POST['shop_description'] );
 		}
 
-
-		//wc_update_order_item_meta( $item_id, apply_filters('wcvendors_sold_by_in_email', __('Sold by', 'wcvendors')), $sold_by);
 		wc_update_order_item_meta( 81, 'built_mlm_vendor_user_id', 12);
 
 		ob_start();
@@ -612,8 +610,11 @@ class Built_Mlm_Public {
 		$vendor_query = New WP_User_Query( $vendor_args );
 		$all_vendors = $vendor_query->get_results();
 
+		$options = get_option( 'built_mlm_settings' );
+
 		$vendors_options[] = '';
 		foreach ($all_vendors as $vendor) {
+			if ( !Built_Mlm::get_user_group_id( $vendor->ID ) ) continue;
 			$vendors_options[$vendor->ID] = $vendor->user_nicename;
 		}
 
