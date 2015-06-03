@@ -136,7 +136,7 @@ class Built_Mlm_Admin {
 		);
 		
 		// Vendors page settings field
-		add_settings_field(
+/*		add_settings_field(
 			'built_mlm_vendors_page',
 			__( 'Vendors Page', $this->plugin_name ),
 			array( $this, 'settings_field_vendors_page' ),
@@ -144,7 +144,7 @@ class Built_Mlm_Admin {
 			'built_mlm_settings_general',
 			array( 'label_for' => 'built_mlm_vendors_page' )
 		);
-		
+*/		
 		// Register settings so that $_POST is handled
 		register_setting( 'built-mlm', 'built_mlm_settings', array( $this, 'sanitize_setting_values' ) );
 	}
