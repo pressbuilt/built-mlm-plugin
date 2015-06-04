@@ -446,7 +446,7 @@ class Built_Mlm_Admin {
 			<table class="wp-list-table widefat fixed striped">
 				<thead>
 					<tr>
-						<th><?php echo __('Vendor', $this->plugin_name); ?></th>
+						<th><?php echo __('Vendor (group name -- user name)', $this->plugin_name); ?></th>
 						<th><?php echo __('Commission Rate', $this->plugin_name); ?></th>
 					</tr>
 				</thead>
@@ -580,7 +580,7 @@ class Built_Mlm_Admin {
 
 						$output .= '<tr>';
 						$output .= '<td style="padding-left:' . $indent . 'px;">';
-						$output .= $group_user->display_name . ' (' . $group_user->user_email . ')<br>';
+						$output .= $group->name . ' -- ' . $group_user->display_name . ' (' . $group_user->user_email . ')<br>';
 						$output .= '</td>';
 						$output .= '<td>';
 						$output .= '<input id="commission_rate_' . $group_user->ID . '" name="commission_rate[' . $group_user->ID . ']" type="number" min="0" max="100" value="' . $commission_rate. '" />%';
