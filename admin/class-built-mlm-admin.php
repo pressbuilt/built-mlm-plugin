@@ -635,7 +635,9 @@ class Built_Mlm_Admin {
 	 * @param unknown $user
 	 */
 	public function show_extra_profile_fields( $user ) {
-		if ( !Built_Mlm::get_vendor_id( $user->ID ) ) return;
+		$vendor_roles = array_intersect( $user->roles, $this->vendor_roles );
+		if ( empty( $vendor_roles ) ) return;
+		$shop_slug = get_user_meta( $user->ID, 'built_mlm_shop_slug', true );
 		?>
 		<h3>Built MLM</h3>
 		<table class="form-table">
@@ -647,8 +649,8 @@ class Built_Mlm_Admin {
 				</td>
 			</tr>
 			<tr>
-				<th>Shop slug</label></th>
-				<td><?php echo !empty( get_user_meta( $user->ID, 'built_mlm_shop_slug', true ) ) ? get_user_meta( $user->ID, 'built_mlm_shop_slug', true ) : '<em>Undefined. Created from shop name above.</em>' ; ?></td>
+				<th>Shop slug</th>
+				<td><?php echo !empty( $shop_slug ) ? $shop_slug : '<em>Undefined. Created from shop name above.</em>'; ?></td>
 			</tr>
 		</table>
 		<?php
