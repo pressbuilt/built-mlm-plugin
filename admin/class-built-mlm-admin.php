@@ -46,7 +46,15 @@ class Built_Mlm_Admin {
 	 * @access   private
 	 * @var      array     $vendor_roles     Valid user roles for Vendors
 	 */
-	private $vendor_roles = array( 'vendor', 'pending_vendor', 'administrator', 'shop_manager' );
+	private $vendor_roles = array( 'vendor', 'pending_vendor' );
+
+	/**
+	 * Exlucde user roles for Vendors
+	 * @since    1.0.1
+	 * @access   private
+	 * @var      array     $exclude_roles     Valid user roles for Vendors
+	 */
+	private $exclude_roles = array( 'administrator', 'shop_manager' );
 
 	/**
 	 * Initialize the class and set its properties.
@@ -476,6 +484,10 @@ class Built_Mlm_Admin {
 									// We only want to list users who aren't already vendors
 									$vendor_roles = array_intersect( $user->roles, $this->vendor_roles );
 									if ( !empty( $vendor_roles ) ) continue;
+
+									// Eclude users who are in the $exclude_roles list
+									$exclude_roles = array_intersect( $user->roles, $this->exclude_roles );
+									if ( !empty( $exclude_roles ) ) continue;
 
 									echo '<option value="' . $user->ID . '">' . esc_html( $user->display_name ) . '</option>';
 								}
