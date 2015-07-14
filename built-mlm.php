@@ -16,7 +16,7 @@
  * Plugin Name:       Built MLM
  * Plugin URI:        https://pressbuilt.com
  * Description:       Multi-Level Marketing (MLM) plugin that integrates with WooCommerce for multi-vendor, tiered commission tracking
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            Pressbuilt
  * Author URI:        https://pressbuilt.com
  * License:           GPL-2.0+

@@ -46,7 +46,7 @@ class Built_Mlm_Admin {
 	 * @access   private
 	 * @var      array     $vendor_roles     Valid user roles for Vendors
 	 */
-	private $vendor_roles = array( 'vendor', 'pending_vendor' );
+	private $vendor_roles = array( 'vendor', 'pending_vendor', 'administrator', 'shop_manager' );
 
 	/**
 	 * Initialize the class and set its properties.
@@ -614,6 +614,49 @@ class Built_Mlm_Admin {
 			if ( !empty( $nodes ) ) {
 				$this->build_hierarchical_vendor_group_select( $nodes, $output, $indent . '—' );
 			}
+		}
+	}
+
+	/**
+	 * Show the vendor shop fields
+	 *
+	 * @param unknown $user
+	 */
+	public function show_extra_profile_fields( $user ) {
+		if ( !Built_Mlm::get_vendor_id( $user->ID ) ) return;
+		?>
+		<h3>Built MLM</h3>
+		<table class="form-table">
+			<tbody>
+			<tr>
+				<th><label for="built_mlm_shop_name">Shop name</label></th>
+				<td><input type="text" name="built_mlm_shop_name" id="built_mlm_shop_name"
+						   value="<?php echo get_user_meta( $user->ID, 'built_mlm_shop_name', true ); ?>" class="regular-text">
+				</td>
+			</tr>
+			<tr>
+				<th>Shop slug</label></th>
+				<td><?php echo !empty( get_user_meta( $user->ID, 'built_mlm_shop_slug', true ) ) ? get_user_meta( $user->ID, 'built_mlm_shop_slug', true ) : '<em>Undefined. Created from shop name above.</em>' ; ?></td>
+			</tr>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Update the vendor shop fields
+	 *
+	 * @param int $vendor_id
+	 *
+	 * @return bool
+	 */
+	public function save_extra_profile_fields( $vendor_id )
+	{
+		if ( !current_user_can( 'edit_user', $vendor_id ) ) return false;
+
+		$users = get_users( array( 'meta_key' => 'built_mlm_shop_slug', 'meta_value' => sanitize_title( $_POST[ 'built_mlm_shop_name' ] ) ) );
+		if ( empty( $users ) || $users[ 0 ]->ID == $vendor_id ) {
+			update_user_meta( $vendor_id, 'built_mlm_shop_name', $_POST[ 'built_mlm_shop_name' ] );
+			update_user_meta( $vendor_id, 'built_mlm_shop_slug', sanitize_title( $_POST[ 'built_mlm_shop_name' ] ) );
 		}
 	}
 

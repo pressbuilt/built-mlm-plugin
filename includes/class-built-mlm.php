@@ -170,6 +170,9 @@ class Built_Mlm {
 		// Plugin settings
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'register_plugin_settings' );
 
+		$this->loader->add_action( 'edit_user_profile', $plugin_admin, 'show_extra_profile_fields' );
+		$this->loader->add_action( 'edit_user_profile_update', $plugin_admin, 'save_extra_profile_fields' );
+
 	}
 
 	/**
